@@ -69,6 +69,7 @@ async function init() {
   buildLayerToggles();
   startClock();
   renderVideo();
+  showWelcome();
 
   $('subPicker').addEventListener('change', (e) => selectSubscription((e.target as HTMLSelectElement).value));
   $('filSub').addEventListener('change', (e) => selectSubscription((e.target as HTMLSelectElement).value));
@@ -127,8 +128,9 @@ async function init() {
     allSubs = ctx.subscriptions.map((s) => ({ subscriptionId: s.subscriptionId, displayName: s.displayName }));
     state.subscriptionId = ctx.defaultSubscriptionId || ctx.subscriptions[0]?.subscriptionId || null;
     if (state.subscriptionId) { picker.value = state.subscriptionId; fsub.value = state.subscriptionId; }
-    if (ctx.user) $('userName').textContent = ctx.user;
-    $('footerCtx').textContent = `${ctx.user || ''} · ${ctx.subscriptions.length} sub · live api`;
+    // Demo build: show a generic, shareable label instead of the signed-in UPN.
+    $('userName').textContent = 'Demo Edition · Can be integrated with Entra ID';
+    $('footerCtx').textContent = `Demo Edition · ${ctx.subscriptions.length} sub · live api`;
     setLens('overview');
     await loadAll();
     customTabs = new CustomTabs({
@@ -148,6 +150,28 @@ async function init() {
   } catch (err: any) {
     showBanner(`Cannot reach Azure: ${err.message}`);
   }
+}
+
+// One-time (per browser session) welcome banner that signals this is a read-only
+// demo environment. Reuses the shared modal; dismiss with the button, X, or Escape.
+function showWelcome() {
+  try { if (sessionStorage.getItem('wm_welcome_seen')) return; } catch { /* ignore */ }
+  showWnModal(
+    `<div class="wm-welcome">` +
+      `<div class="wm-welcome-badge">DEMO ENVIRONMENT</div>` +
+      `<h2 class="wm-welcome-title">Welcome to Azure Infra World Map</h2>` +
+      `<p class="wm-welcome-lead">This is a <b>demo environment</b> with <b>read-only</b> data access.</p>` +
+      `<ul class="wm-welcome-points">` +
+        `<li>Shows <b>live Azure data</b> via a read-only managed identity</li>` +
+        `<li><b>No write access</b> — nothing is ever created, changed or deleted</li>` +
+        `<li>No secrets stored · hosted in a demo subscription</li>` +
+      `</ul>` +
+      `<button class="wm-welcome-btn" id="wmWelcomeBtn">Explore the demo</button>` +
+    `</div>`,
+    'welcome',
+  );
+  try { sessionStorage.setItem('wm_welcome_seen', '1'); } catch { /* ignore */ }
+  document.getElementById('wmWelcomeBtn')?.addEventListener('click', closeWnModal);
 }
 
 function buildShell() {
@@ -171,7 +195,7 @@ function buildShell() {
       <button id="exportBtn" class="hbtn" title="Export report — Excel, PDF or CSV">⤓ Export</button>
       <button id="editionsBtn" class="hbtn">Editions</button>
       <span id="liveClock" class="hclock"></span>
-      <span id="userName" class="huser"></span>
+      <span id="userName" class="huser" title="Demo Edition - sign-in can be integrated with Microsoft Entra ID"></span>
     </div>
   </header>
   <div id="banner"></div>
