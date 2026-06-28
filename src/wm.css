@@ -91,10 +91,10 @@ button { font-family: inherit; }
   color: var(--text-dim); font-size: 9px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; cursor: pointer;
 }
 .hbtn:hover { color: var(--text); border-color: var(--border-strong); }
-.credit-banner { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.18; cursor: pointer; flex: 0 1 auto; min-width: 0; transition: color .15s; }
-.credit-l1 { font-size: 7.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
-.credit-l2 { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.credit-l2 b { color: var(--text-2); font-weight: 600; }
+.credit-banner { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; cursor: pointer; flex: 0 1 auto; min-width: 0; transition: color .15s; }
+.credit-l1 { font-size: 9px; letter-spacing: .7px; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.credit-l2 { font-size: 12.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.credit-l2 b { color: var(--text); font-weight: 700; }
 .credit-banner:hover .credit-l2 { color: var(--text-2); }
 .credit-banner:hover .credit-l2 b { color: var(--accent); }
 .credit-banner b { color: var(--text-2); font-weight: 600; }
