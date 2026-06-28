@@ -10,6 +10,12 @@
 [![Azure](https://img.shields.io/badge/Azure-read--only-0078D4?logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
 [![Status](https://img.shields.io/badge/status-active-success)](#roadmap)
 
+<p align="center">
+  <img src="docs/images/screenshot-dashboard.jpg" alt="Azure Infra World Map live dashboard — a 3D globe of the Azure estate with cost bubbles, spend overview, live alerts and cost-by-service" width="100%">
+  <br>
+  <em>The live command center — your Azure estate on a 3D globe, with spend, alerts, regions and cost breakdowns in one view.</em>
+</p>
+
 **Azure Infra World Map** is a real-time, single-pane command center for your Azure
 estate. It pulls **100% live data** straight from Azure — Cost Management, Resource
 Graph, Microsoft Defender for Cloud, Azure Advisor, Azure Monitor and Service Health —
@@ -123,26 +129,29 @@ your team keeps up with the platform.
 
 ## Screenshots
 
-> Drop your own screenshots into a `docs/screenshots/` folder and uncomment the lines
-> below. (Screens are intentionally not bundled so the repo stays free of any real
-> tenant data.)
+The dashboard at the **top of this page** is the default **Overview** lens — a 3D globe
+with cost-weighted region bubbles, the spend overview and cost scorecard, live Azure
+Monitor alerts, and a cost-by-service breakdown, all from live Azure data.
 
-<!--
-![Overview — 3D globe with cost bubbles](docs/screenshots/overview.png)
-![Cost Explorer — daily stacked spend](docs/screenshots/cost-explorer.png)
-![Danger Zones — risk concentration](docs/screenshots/danger-zones.png)
-![Resource detail dock — Defender & Advisor](docs/screenshots/resource-detail.png)
--->
-
-What you'll see when you run it locally:
+What else you'll see when you run it:
 
 - A dark, full-bleed **command-center** shell: header (logo, lenses, subscription &amp;
   period picker, live clock) → map section → a wall of live panels → footer.
-- A rotating **3D globe** with cost-weighted region bubbles and cross-region linkage arcs.
+- Three map modes — **Standard** (cost bubbles), **Heatmap**, and **Danger Zones** (risk).
 - A **panel wall** that re-flows per lens: KPIs, Cost Explorer, forecast, anomalies,
   Pareto, waste, tag governance, posture, service health and more.
 
 ## How it works
+
+The entire tool runs as a single **Azure App Service** Web App that serves the SPA and
+the Express API from one origin, authenticates to Azure **read-only** with a Managed
+Identity, and caches results to stay within rate limits.
+
+<p align="center">
+  <img src="docs/images/architecture-hld.jpeg" alt="Azure Infra World Map high-level architecture — Browser to Azure App Service (built SPA plus Express API, with Managed Identity and Microsoft Entra Easy Auth) to a read-only Azure data plane: Cost Management, Resource Graph, Defender for Cloud, Advisor, Monitor, Service Health" width="100%">
+</p>
+
+The same flow as a Mermaid diagram:
 
 ```mermaid
 flowchart LR
