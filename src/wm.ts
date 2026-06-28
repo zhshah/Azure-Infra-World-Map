@@ -235,7 +235,6 @@ function buildShell() {
   </main>
   <footer class="site-footer">
     <span><span class="site-footer-name">AZURE INFRA WORLD MAP</span><span class="site-footer-sub">GLOBAL CLOUD INTELLIGENCE · Solution by: Zahir Hussain Shah</span></span>
-    <span class="site-footer-mid">Microsoft Confidential</span>
     <span class="site-footer-copy" id="footerCtx"></span>
   </footer>
   <div id="detailDock" class="detail-dock hidden"></div>
