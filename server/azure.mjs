@@ -1,10 +1,12 @@
-// Azure SDK helpers for the FinOps Map backend.
-// Auth: AzureCliCredential — reuses the developer's `az login` session.
-// Subscriptions are scoped to the logged-on `az` context: we read the active
-// subscription + tenant from `az account show`, then list `az account list --all`
-// and keep only Enabled subs in that tenant (so guest-tenant subs from other
-// orgs don't flood the picker). A per-tenant credential is used for data queries.
-import { AzureCliCredential } from '@azure/identity';
+// Azure SDK helpers for the Azure Infra World Map backend.
+// Auth: DefaultAzureCredential — works locally via your `az login` session AND in
+// the cloud (Azure App Service / Container Apps) via a Managed Identity, with no
+// code changes. Locally, subscriptions are scoped to the logged-on `az` context
+// (`az account show` + `az account list --all`, Enabled subs in the active tenant).
+// When the Azure CLI is unavailable (e.g. in App Service), subscriptions are
+// enumerated via the ARM Subscriptions API using the Managed Identity instead.
+import { DefaultAzureCredential } from '@azure/identity';
+import { SubscriptionClient } from '@azure/arm-resources-subscriptions';
 import { ResourceGraphClient } from '@azure/arm-resourcegraph';
 import { ManagementGroupsAPI } from '@azure/arm-managementgroups';
 import { ResourceManagementClient } from '@azure/arm-resources';
@@ -19,9 +21,11 @@ const AZ = 'az';
 const AZ_OPTS = { maxBuffer: 32 * 1024 * 1024, shell: true, windowsHide: true };
 
 // Default (home-tenant) credential — used for SQL token + management groups.
+// DefaultAzureCredential resolves to a Managed Identity in Azure and to your
+// `az login` session locally, so the same build runs in both environments.
 let _defaultCredential;
 export function getCredential() {
-  if (!_defaultCredential) _defaultCredential = new AzureCliCredential({ additionallyAllowedTenants: ['*'] });
+  if (!_defaultCredential) _defaultCredential = new DefaultAzureCredential({ additionallyAllowedTenants: ['*'] });
   return _defaultCredential;
 }
 
@@ -44,25 +48,59 @@ async function getActiveContext() {
 
 export async function getSubscriptions() {
   if (_subs) return _subs;
-  const ctx = await getActiveContext();
-  _defaultSubId = ctx.subId;
-  _homeTenantId = ctx.tenantId;
-  _signedInUser = ctx.user;
-  const { stdout } = await execFileP(AZ, ['account', 'list', '--all', '-o', 'json'], AZ_OPTS);
-  const arr = JSON.parse(stdout);
-  // Only Enabled subscriptions can be queried for cost/inventory.
-  let enabled = arr.filter((s) => s.state === 'Enabled');
-  // Respect the logged-on user's context: narrow to the active tenant when it has
-  // subscriptions (avoids pulling in guest-tenant subs from `--all`). Fall back to
-  // all enabled subs only if the active tenant can't be determined / has none.
-  if (_homeTenantId) {
-    const scoped = enabled.filter((s) => s.tenantId === _homeTenantId);
+  // 1) Local dev path: use the Azure CLI context. This preserves tenant scoping
+  //    and the signed-in user's default subscription.
+  try {
+    const ctx = await getActiveContext();
+    const { stdout } = await execFileP(AZ, ['account', 'list', '--all', '-o', 'json'], AZ_OPTS);
+    const arr = JSON.parse(stdout);
+    _defaultSubId = ctx.subId;
+    _homeTenantId = ctx.tenantId;
+    _signedInUser = ctx.user;
+    // Only Enabled subscriptions can be queried for cost/inventory.
+    let enabled = arr.filter((s) => s.state === 'Enabled');
+    // Respect the logged-on user's context: narrow to the active tenant when it has
+    // subscriptions (avoids pulling in guest-tenant subs from `--all`). Fall back to
+    // all enabled subs only if the active tenant can't be determined / has none.
+    if (_homeTenantId) {
+      const scoped = enabled.filter((s) => s.tenantId === _homeTenantId);
+      if (scoped.length) enabled = scoped;
+    }
+    _subs = enabled
+      .map((s) => ({ subscriptionId: s.id, displayName: s.name, state: s.state, tenantId: s.tenantId, isDefault: s.isDefault }))
+      .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+    return _subs;
+  } catch (cliErr) {
+    // 2) Cloud / no-CLI path (e.g. Azure App Service): enumerate subscriptions via
+    //    the ARM Subscriptions API using the Managed Identity.
+    console.warn('[api] Azure CLI unavailable; enumerating subscriptions via Managed Identity:', cliErr?.message || cliErr);
+    _subs = await getSubscriptionsViaArm();
+    return _subs;
+  }
+}
+
+// Cloud fallback: list subscriptions visible to the Managed Identity. Honours
+// AZURE_SUBSCRIPTION_ID / AZURE_TENANT_ID (when set) to scope/seed the picker.
+async function getSubscriptionsViaArm() {
+  const client = new SubscriptionClient(getCredential());
+  const all = [];
+  for await (const s of client.subscriptions.list()) {
+    if (s.state && s.state !== 'Enabled') continue;
+    all.push({ subscriptionId: s.subscriptionId, displayName: s.displayName, state: s.state, tenantId: s.tenantId });
+  }
+  const envSub = process.env.AZURE_SUBSCRIPTION_ID || null;
+  const envTenant = process.env.AZURE_TENANT_ID || null;
+  _homeTenantId = envTenant || all[0]?.tenantId || null;
+  _defaultSubId = (envSub && all.some((s) => s.subscriptionId === envSub)) ? envSub : (all[0]?.subscriptionId || null);
+  _signedInUser = 'Managed identity';
+  let enabled = all;
+  if (envTenant) {
+    const scoped = enabled.filter((s) => s.tenantId === envTenant);
     if (scoped.length) enabled = scoped;
   }
-  _subs = enabled
-    .map((s) => ({ subscriptionId: s.id, displayName: s.name, state: s.state, tenantId: s.tenantId, isDefault: s.isDefault }))
+  return enabled
+    .map((s) => ({ ...s, isDefault: s.subscriptionId === _defaultSubId }))
     .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
-  return _subs;
 }
 // Backwards-compatible alias used by the API server.
 export const listSubscriptions = getSubscriptions;
@@ -82,7 +120,7 @@ function credentialForSub(subId) {
   const tenantId = tenantForSub(subId);
   const key = tenantId || 'default';
   if (!_credByTenant.has(key)) {
-    _credByTenant.set(key, new AzureCliCredential(
+    _credByTenant.set(key, new DefaultAzureCredential(
       tenantId ? { tenantId, additionallyAllowedTenants: ['*'] } : { additionallyAllowedTenants: ['*'] },
     ));
   }

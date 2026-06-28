@@ -37,7 +37,7 @@ ever fabricated.
 - [Configuration](#configuration)
 - [API reference](#api-reference)
 - [Security &amp; privacy](#security--privacy)
-- [Deployment](#deployment)
+- [Deploy to Azure](#deploy-to-azure)
 - [Roadmap](#roadmap)
 - [About the Author](#about-the-author)
 - [License](#license)
@@ -152,7 +152,7 @@ flowchart LR
     APIC["api.ts — typed fetch"]
   end
   subgraph Server["Node.js — Express API (server/index.mjs)"]
-    AZ["azure.mjs — AzureCliCredential (read-only)"]
+    AZ["azure.mjs — DefaultAzureCredential (read-only)"]
     CACHE[("memory + disk cache (.cache/)")]
     SQL[("optional Azure SQL cost cache")]
   end
@@ -180,9 +180,10 @@ flowchart LR
 
 - The **frontend** (Vite + TypeScript + deck.gl) renders the globe/map and panels and
   talks only to the local API.
-- The **backend** (Node.js + Express) authenticates with your **Azure CLI session**
-  (`AzureCliCredential`), performs **read-only** Azure calls, and caches responses to be
-  gentle on rate limits.
+- The **backend** (Node.js + Express) authenticates with **`DefaultAzureCredential`** —
+  your `az login` session locally, a **Managed Identity** when hosted in Azure — performs
+  **read-only** Azure calls, and caches responses to be gentle on rate limits.
+- In production the backend also serves the built SPA, so the UI and API share one origin.
 - The Vite dev server runs on **`:8084`** and proxies `/api` to the Express server on
   **`:8085`**.
 
@@ -192,7 +193,7 @@ flowchart LR
 | --- | --- |
 | Frontend | TypeScript, Vite, [deck.gl](https://deck.gl/) (Map/Heatmap/Arc/Path layers), hand-rolled HTML/CSS (no UI framework) |
 | Backend | Node.js, Express, `@azure/identity`, `@azure/arm-resourcegraph`, `@azure/arm-costmanagement`, `@azure/arm-resources`, `@azure/monitor-query`, `@azure/arm-managementgroups` |
-| Auth | `AzureCliCredential` (Microsoft Entra) — read-only, multi-tenant |
+| Auth | `DefaultAzureCredential` (Microsoft Entra) — `az` session locally, Managed Identity in Azure; read-only, multi-tenant |
 | Optional cache | Azure SQL via `mssql` (Entra-only auth) |
 | Data sources | Resource Graph, Cost Management, Defender for Cloud, Advisor, Azure Monitor, Service Health, Activity Log, Resource Health |
 
@@ -253,12 +254,15 @@ cp .env.example .env
 
 | Variable | Purpose |
 | --- | --- |
-| `PORT` | API server port (default `8085`; the web dev server proxies `/api` here) |
-| `AZURE_SUBSCRIPTION_ID` | Subscription to load on startup (defaults to your `az` default) |
+| `PORT` | API server port (default `8085`; in Azure App Service this is set for you) |
+| `AZURE_SUBSCRIPTION_ID` | Subscription to load on startup (defaults to your `az` default, or seeds the picker when hosted) |
+| `AZURE_TENANT_ID` | *(cloud/optional)* Scope the subscription picker to one tenant when running under a Managed Identity |
 | `SQL_SERVER` / `SQL_DATABASE` | Optional Azure SQL cost cache (Entra auth, no password) for throttle-proof history |
 
-> The optional Azure SQL cache authenticates with your Entra access token from `az` — no
-> SQL password is stored. The schema is created automatically on first run.
+> When hosted in Azure, the app uses its **Managed Identity** and the ARM Subscriptions
+> API to enumerate subscriptions — no Azure CLI is required on the host. The optional
+> Azure SQL cache authenticates with an Entra token (no SQL password). Schemas are created
+> on first run.
 
 ## API reference
 
@@ -287,8 +291,9 @@ and more (see `server/index.mjs`).
 Security and privacy are first-class design goals:
 
 - **Read-only.** The app never creates, updates or deletes Azure resources.
-- **No stored credentials.** Authentication is delegated to your local Azure CLI session
-  (`AzureCliCredential`). No tokens, keys or passwords are written to disk by the app.
+- **No stored credentials.** Authentication uses `DefaultAzureCredential` — your local
+  Azure CLI session in dev, or a **Managed Identity** in Azure. No tokens, keys or
+  passwords are written to disk by the app.
 - **Your data stays local.** Live responses are cached only on your machine (under
   `.cache/`, which is **git-ignored**) and optionally in an Azure SQL database **you**
   own. Nothing is sent to any third party.
@@ -298,20 +303,113 @@ Security and privacy are first-class design goals:
 > If you fork this project, keep your `.cache/` and `.env` out of source control — they
 > can contain real subscription IDs, resource names and cost figures.
 
-## Deployment
+## Deploy to Azure
 
-This is primarily a **local, single-user analyst tool** that runs against your own Azure
-identity. If you want to host it for a team:
+The app runs **either locally or in Azure with no code changes**. The Node server serves
+both the API and the built SPA from a single origin, and authentication uses
+`DefaultAzureCredential` — so it transparently uses your `az login` session locally and a
+**Managed Identity** when hosted in Azure. (Verified: `npm run build` → the server serves
+`dist/` and `/api/*` on one port.)
 
-- Build the frontend with `npm run build` and serve `dist/` behind your web server.
-- Run the Express API (`npm run api`) on a host that has an Azure identity (a managed
-  identity or a service principal with the read-only roles above), and place it behind
-  authentication (e.g. Microsoft Entra ID / an application gateway).
-- Provide credentials via the standard Azure identity chain rather than `az login` in
-  shared/hosted scenarios.
+### Option A — Azure App Service (recommended)
 
-Because the app exposes cost and posture data, **always require authentication** before
-putting it on a network others can reach.
+A single Linux **Web App** hosts the whole tool (API + UI).
+
+**1. Create the Web App** (Node 20 LTS):
+
+```bash
+RG=rg-infra-worldmap
+PLAN=plan-infra-worldmap
+APP=infra-worldmap-<unique>      # must be globally unique
+LOCATION=westeurope
+
+az group create -n $RG -l $LOCATION
+az appservice plan create -g $RG -n $PLAN --is-linux --sku B1
+az webapp create -g $RG -p $PLAN -n $APP --runtime "NODE:20-lts"
+```
+
+**2. Enable a system-assigned Managed Identity** and capture its principal ID:
+
+```bash
+az webapp identity assign -g $RG -n $APP
+PRINCIPAL=$(az webapp identity show -g $RG -n $APP --query principalId -o tsv)
+```
+
+**3. Grant the identity read-only access** to the subscription(s) you want to inspect:
+
+```bash
+SUB=<subscription-id>
+az role assignment create --assignee $PRINCIPAL --role "Reader" \
+  --scope /subscriptions/$SUB
+az role assignment create --assignee $PRINCIPAL --role "Cost Management Reader" \
+  --scope /subscriptions/$SUB
+# Optional — full Defender for Cloud findings:
+az role assignment create --assignee $PRINCIPAL --role "Security Reader" \
+  --scope /subscriptions/$SUB
+```
+
+> To cover a whole management group, scope to
+> `/providers/Microsoft.Management/managementGroups/<mg-id>` instead.
+
+**4. Configure build + app settings:**
+
+```bash
+az webapp config appsettings set -g $RG -n $APP --settings \
+  SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+  AZURE_SUBSCRIPTION_ID=$SUB
+# AZURE_TENANT_ID=<tenant-id>   # optional: scope the picker to one tenant
+```
+
+`SCM_DO_BUILD_DURING_DEPLOYMENT=true` lets Oryx run `npm install` + `npm run build` at
+deploy time; the app then starts via `npm start` (`node server/index.mjs`), which serves
+the freshly built `dist/`.
+
+**5. Deploy the code** from the repo root:
+
+```bash
+az webapp up -g $RG -n $APP --runtime "NODE:20-lts"
+# or zip-deploy a prebuilt bundle:
+# npm run build && az webapp deploy -g $RG -n $APP --src-path . --type zip
+```
+
+**6. Protect it.** The tool surfaces cost and security data, so put identity in front of
+it — enable **App Service Authentication (Easy Auth)** with Microsoft Entra ID:
+
+```bash
+az webapp auth update -g $RG -n $APP --enabled true \
+  --action RedirectToLoginPage --redirect-provider azureactivedirectory
+```
+
+Browse to `https://<APP>.azurewebsites.net`.
+
+### Option B — Azure Container Apps / containers
+
+The same single-process model runs in any container host. A minimal `Dockerfile`:
+
+```dockerfile
+FROM node:20-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+ENV PORT=8080
+EXPOSE 8080
+CMD ["npm", "start"]
+```
+
+Deploy to Azure Container Apps with a system- or user-assigned Managed Identity that holds
+the same **Reader** + **Cost Management Reader** roles, then set `AZURE_SUBSCRIPTION_ID`
+(and optionally `AZURE_TENANT_ID`) as environment variables.
+
+### Notes
+
+- **Authentication** uses `DefaultAzureCredential`: Managed Identity in Azure, your `az`
+  session locally — no secrets stored.
+- The **Activity Log** tab on the resource dock uses the Azure CLI and is unavailable on a
+  pure cloud host; it degrades gracefully — every other feature works through the SDKs.
+- For long, throttle-proof cost history, attach the optional **Azure SQL** cache and grant
+  the Managed Identity access (Entra-only auth, no password).
 
 ## Roadmap
 

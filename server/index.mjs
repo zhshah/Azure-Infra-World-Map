@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -49,6 +50,17 @@ const app = express();
 app.use(cors());
 app.use(compression());
 app.use(express.json());
+
+// In production (Azure App Service / container) the built SPA in ../dist is served
+// by this same Express process, so the UI and API share one origin and one port.
+// In local dev this is skipped (no dist/) — Vite serves the UI on :8084 and proxies
+// /api to this server.
+const distDir = join(__dirname, '..', 'dist');
+const serveStatic = existsSync(distDir);
+if (serveStatic) {
+  app.use(express.static(distDir));
+  console.log('[api] serving built SPA from', distDir);
+}
 
 // ---- tiny TTL cache ------------------------------------------------------
 const cache = new Map();
@@ -922,6 +934,12 @@ if (sqlCache.isEnabled()) {
   sqlCache.ensureSchema().then(() => console.log('[sql] cost cache schema ready')).catch((e) => console.warn('[sql] schema init failed:', e.message));
 }
 
+// SPA fallback: when serving the built UI, return index.html for any non-API GET
+// so browser refreshes and deep links resolve to the app.
+if (serveStatic) {
+  app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(join(distDir, 'index.html')));
+}
+
 app.listen(PORT, () => {
-  console.log(`[finops-api] listening on http://localhost:${PORT}  (sqlCache=${sqlCache.isEnabled()})`);
+  console.log(`[api] listening on :${PORT}  (static=${serveStatic}, sqlCache=${sqlCache.isEnabled()})`);
 });
