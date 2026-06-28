@@ -80,7 +80,6 @@ async function init() {
     loadAll();
     customTabs?.refresh();
   }));
-  $('editionsBtn').addEventListener('click', openEditions);
   $('aboutBtn').addEventListener('click', openAbout);
   document.getElementById('creditBanner')?.addEventListener('click', openAbout);
   document.getElementById('brandLogo')?.addEventListener('click', openAbout);
@@ -190,10 +189,9 @@ function buildShell() {
       <div class="period-tabs" id="periodTabs">${['1d', '7d', '14d', '30d', '60d', '90d'].map((r) => `<button class="period-tab ${r === '30d' ? 'active' : ''}" data-range="${r}">${r.toUpperCase()}</button>`).join('')}</div>
     </div>
     <div class="header-right">
-      <span class="credit-banner" id="creditBanner" title="Solution Developed by Zahir Hussain Shah · Sr. Solution Engineer — click for About"><span class="credit-l1">Solution Developed by</span><span class="credit-l2"><b>Zahir Hussain Shah</b> · Sr. Solution Engineer</span></span>
+      <span class="credit-banner" id="creditBanner" title="Solution Accelerator by Zahir Hussain Shah · Sr. Solution Engineer — click for About"><span class="credit-l1">Solution Accelerator by</span><span class="credit-l2"><b>Zahir Hussain Shah</b> · Sr. Solution Engineer</span></span>
       <button id="aboutBtn" class="hbtn">About</button>
       <button id="exportBtn" class="hbtn" title="Export report — Excel, PDF or CSV">⤓ Export</button>
-      <button id="editionsBtn" class="hbtn">Editions</button>
       <span id="liveClock" class="hclock"></span>
       <span id="userName" class="huser" title="Demo Edition - sign-in can be integrated with Microsoft Entra ID"></span>
     </div>
@@ -236,7 +234,7 @@ function buildShell() {
     <div class="custom-view hidden" id="customView"></div>
   </main>
   <footer class="site-footer">
-    <span><span class="site-footer-name">AZURE INFRA WORLD MAP</span><span class="site-footer-sub">GLOBAL CLOUD INTELLIGENCE · Developed by Zahir Hussain Shah</span></span>
+    <span><span class="site-footer-name">AZURE INFRA WORLD MAP</span><span class="site-footer-sub">GLOBAL CLOUD INTELLIGENCE · Solution Accelerator by Zahir Hussain Shah</span></span>
     <span class="site-footer-mid">Microsoft Confidential</span>
     <span class="site-footer-copy" id="footerCtx"></span>
   </footer>
@@ -2845,20 +2843,6 @@ function sparkSvg(vals: number[]): string {
   const w = 320, ht = 46, n = vals.length, max = Math.max(...vals), min = Math.min(...vals), rng = max - min || 1;
   const pts = vals.map((v, i) => `${((i / (n - 1 || 1)) * w).toFixed(1)},${(ht - 2 - ((v - min) / rng) * (ht - 6)).toFixed(1)}`).join(' ');
   return `<svg class="spark-svg" viewBox="0 0 ${w} ${ht}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#3bd6ff" stroke-width="1.4"/></svg>`;
-}
-
-// ---- Editions modal -------------------------------------------------------
-const EDITIONS = [
-  { name: 'Free', price: 'Included', feats: [['World cost map + heatmap + danger zones', true], ['MG \u2192 Sub \u2192 RG \u2192 Resource drill-down', true], ['Availability-zone topology', true], ['Resource detail (props/metrics/cost)', true]] },
-  { name: 'Pro', price: 'Translated', feats: [['Live panels: analytics, waste, governance', true], ['AI Insights + anomaly detection', true], ['Per-resource Security (Defender) + Advisor', true], ['Lens presets + layer toggles', true], ['Budgets & alerts (email/Teams)', false]] },
-  { name: 'Enterprise', price: 'Roadmap', feats: [['Multi-subscription rollups', true], ['MCP endpoint for Copilot/agents', true], ['Azure Policy tag remediation', false], ['Chargeback / showback', false], ['Entra SSO + RBAC views', false]] },
-];
-function openEditions() {
-  const root = $('modalRoot');
-  root.innerHTML = `<div class="modal-backdrop" id="edBack"></div><div class="modal"><h2>Editions</h2><p class="muted">WorldMonitor Pro/Enterprise tiers mapped to Azure FinOps.</p>` +
-    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px">${EDITIONS.map((e) => `<div style="border:1px solid var(--border);padding:12px"><div style="font-size:14px;font-weight:700;color:#fff">${e.name}</div><div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${e.price}</div>${e.feats.map(([t, on]) => `<div style="font-size:10px;color:${on ? 'var(--text-2)' : 'var(--text-muted)'};padding:3px 0">${on ? '\u2713' : '\u25cb'} ${t}</div>`).join('')}</div>`).join('')}</div></div>`;
-  root.classList.remove('hidden');
-  $('edBack').addEventListener('click', () => { root.classList.add('hidden'); root.innerHTML = ''; });
 }
 
 function showBanner(msg: string) { $('banner').innerHTML = `<div class="banner">${h(msg)}</div>`; }
