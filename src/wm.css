@@ -586,8 +586,13 @@ button.kpi { border: 0; font: inherit; color: inherit; text-align: left; width: 
 .alloc-bars button.clk-alloc { font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; background: transparent; border: 0; padding: 1px 0; transition: background .12s; }
 .alloc-bars button.clk-alloc:hover { background: var(--overlay-subtle); }
 .alloc-note { font-size: 9px; color: var(--text-muted); margin-top: 7px; }
-.panel[data-key="finkpi"] { min-height: 246px; overflow: visible; }
-.panel[data-key="finkpi"] .panel-body { overflow: visible; }
+/* Cost Scorecard: let the panel grow to its content instead of clipping.
+   .panel-body's default `flex:1` (=flex:1 1 0%) contributes zero intrinsic height,
+   so with the grid's `align-items:stretch` the panel was pinned at min-height and
+   overflowing content was silently cut. align-self:start + flex:0 0 auto makes the
+   panel size to its content (min-height stays as a floor). */
+.panel[data-key="finkpi"] { min-height: 246px; align-self: start; overflow: visible; }
+.panel[data-key="finkpi"] .panel-body { flex: 0 0 auto; overflow: visible; }
 .panel[data-key="alloc"] { min-height: 292px; }
 
 /* ---- Export menu ---- */
