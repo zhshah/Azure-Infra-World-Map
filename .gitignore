@@ -1,0 +1,31 @@
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build output ----
+dist/
+*.tsbuildinfo
+
+# ---- Local runtime cache (contains REAL Azure data — never commit) ----
+.cache/
+
+# ---- Environment / secrets (keep .env.example) ----
+.env
+.env.*
+!.env.example
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+logs/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ---- Misc local state ----
+.vercel
+.azure
+*.local
