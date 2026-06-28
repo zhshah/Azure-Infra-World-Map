@@ -334,7 +334,7 @@ LOCATION=westeurope
 
 az group create -n $RG -l $LOCATION
 az appservice plan create -g $RG -n $PLAN --is-linux --sku B1
-az webapp create -g $RG -p $PLAN -n $APP --runtime "NODE:20-lts"
+az webapp create -g $RG -p $PLAN -n $APP --runtime "NODE:22-lts"
 ```
 
 **2. Enable a system-assigned Managed Identity** and capture its principal ID:
@@ -376,7 +376,7 @@ the freshly built `dist/`.
 **5. Deploy the code** from the repo root:
 
 ```bash
-az webapp up -g $RG -n $APP --runtime "NODE:20-lts"
+az webapp up -g $RG -n $APP --runtime "NODE:22-lts"
 # or zip-deploy a prebuilt bundle:
 # npm run build && az webapp deploy -g $RG -n $APP --src-path . --type zip
 ```
