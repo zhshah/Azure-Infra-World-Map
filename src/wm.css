@@ -586,7 +586,8 @@ button.kpi { border: 0; font: inherit; color: inherit; text-align: left; width: 
 .alloc-bars button.clk-alloc { font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; background: transparent; border: 0; padding: 1px 0; transition: background .12s; }
 .alloc-bars button.clk-alloc:hover { background: var(--overlay-subtle); }
 .alloc-note { font-size: 9px; color: var(--text-muted); margin-top: 7px; }
-.panel[data-key="finkpi"] { min-height: 246px; }
+.panel[data-key="finkpi"] { min-height: 246px; overflow: visible; }
+.panel[data-key="finkpi"] .panel-body { overflow: visible; }
 .panel[data-key="alloc"] { min-height: 292px; }
 
 /* ---- Export menu ---- */
