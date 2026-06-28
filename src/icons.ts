@@ -63,11 +63,98 @@ function lookup(type: string): { svg: string; color: string } {
   return GENERIC;
 }
 
-// Inline icon (currentColor). Pass tinted=true to colour by category.
+// Official Azure service icons (SVGs in public/azure-icons/). First match wins;
+// anything unmapped falls back to the generic Azure "all resources" glyph.
+const ICON_BASE = '/azure-icons/';
+const FILE_ICONS: { test: RegExp; file: string }[] = [
+  // Compute
+  { test: /virtualmachinescalesets|\/scalesets/, file: 'vm-scale-set.svg' },
+  { test: /hybridcompute\/machines/, file: 'arc-machine.svg' },
+  { test: /virtualmachines\/extensions/, file: 'virtual-machine.svg' },
+  { test: /microsoft\.compute\/virtualmachines|\/virtualmachines$/, file: 'virtual-machine.svg' },
+  { test: /\/disks|\/snapshots/, file: 'disks.svg' },
+  { test: /servicefabric/, file: 'service-fabric.svg' },
+  { test: /batchaccounts/, file: 'batch-account.svg' },
+  // Containers
+  { test: /managedclusters|kubernetes|\/aks/, file: 'kubernetes-service.svg' },
+  { test: /containerapps|\/managedenvironments/, file: 'container-instances.svg' },
+  { test: /containerinstance|\/containergroups/, file: 'container-instances.svg' },
+  { test: /\/registries/, file: 'container-registry.svg' },
+  // Web / functions
+  { test: /\/sites.*function|functionapp/, file: 'function-app.svg' },
+  { test: /staticsites/, file: 'static-app.svg' },
+  { test: /\/serverfarms/, file: 'app-service-plan.svg' },
+  { test: /microsoft\.web\/sites|appservice/, file: 'app-service.svg' },
+  { test: /apimanagement/, file: 'api-management.svg' },
+  { test: /signalrservice|\/signalr/, file: 'signalr.svg' },
+  // Databases / analytics
+  { test: /documentdb|cosmos/, file: 'cosmos-db.svg' },
+  { test: /managedinstances/, file: 'sql-managed-instance.svg' },
+  { test: /microsoft\.sql|\/servers\/databases|sqlserver|sqlvirtualmachines/, file: 'sql-database.svg' },
+  { test: /dbforpostgresql/, file: 'postgresql.svg' },
+  { test: /dbformysql/, file: 'mysql.svg' },
+  { test: /dbformariadb/, file: 'mariadb.svg' },
+  { test: /\/redis|redisenterprise/, file: 'cache-redis.svg' },
+  { test: /datafactory/, file: 'data-factory.svg' },
+  { test: /synapse/, file: 'synapse.svg' },
+  { test: /kusto|dataexplorer/, file: 'data-explorer.svg' },
+  { test: /datalake/, file: 'data-lake.svg' },
+  { test: /netapp/, file: 'netapp-files.svg' },
+  { test: /storageaccounts|\/storage/, file: 'storage-account.svg' },
+  // Security / identity
+  { test: /vaults.*secret|keyvault|microsoft\.keyvault/, file: 'key-vault.svg' },
+  { test: /recoveryservices|\/vaults\/backup|protecteditems|backupvault|dataprotection/, file: 'recovery-services-vault.svg' },
+  { test: /microsoft\.security|\/defender|\/assessments/, file: 'defender.svg' },
+  { test: /managedidentity|userassignedidentities|\/identities/, file: 'managed-identity.svg' },
+  // Networking
+  { test: /virtualnetworks|\/subnets/, file: 'virtual-network.svg' },
+  { test: /networkinterfaces/, file: 'network-interface.svg' },
+  { test: /publicipaddresses|\/publicip/, file: 'public-ip.svg' },
+  { test: /applicationgateways/, file: 'application-gateway.svg' },
+  { test: /frontdoor|microsoft\.cdn/, file: 'front-door.svg' },
+  { test: /trafficmanager/, file: 'traffic-manager.svg' },
+  { test: /loadbalancers/, file: 'load-balancer.svg' },
+  { test: /bastionhosts|\/bastion/, file: 'bastion.svg' },
+  { test: /azurefirewalls|\/firewall/, file: 'firewall.svg' },
+  { test: /networksecuritygroups/, file: 'nsg.svg' },
+  { test: /privateendpoints|privatelinkservices/, file: 'private-endpoint.svg' },
+  { test: /dnszones|privatednszones|dnsresolvers/, file: 'dns-zone.svg' },
+  { test: /expressroute/, file: 'expressroute.svg' },
+  { test: /virtualnetworkgateways|vpngateways|localnetworkgateways/, file: 'vnet-gateway.svg' },
+  { test: /\/connections/, file: 'connection.svg' },
+  { test: /natgateways/, file: 'nat-gateway.svg' },
+  { test: /routetables/, file: 'route-table.svg' },
+  // AI
+  { test: /\/openai/, file: 'openai.svg' },
+  { test: /searchservices/, file: 'cognitive-search.svg' },
+  { test: /machinelearningservices/, file: 'machine-learning.svg' },
+  { test: /cognitiveservices/, file: 'cognitive-services.svg' },
+  // Observability / integration / management
+  { test: /operationalinsights|loganalytics/, file: 'log-analytics.svg' },
+  { test: /insights\/components|applicationinsights|microsoft\.insights/, file: 'application-insights.svg' },
+  { test: /servicebus/, file: 'service-bus.svg' },
+  { test: /eventgrid/, file: 'event-grid.svg' },
+  { test: /eventhub|\/notificationhubs|\/relay/, file: 'service-bus.svg' },
+  { test: /\/workflows|microsoft\.logic/, file: 'logic-app.svg' },
+  { test: /appconfiguration/, file: 'app-configuration.svg' },
+  { test: /automationaccounts/, file: 'automation-account.svg' },
+  { test: /\/managementgroups/, file: 'management-group.svg' },
+  { test: /resourcegroups/, file: 'resource-group.svg' },
+  { test: /\/subscriptions/, file: 'subscription.svg' },
+];
+
+function iconFile(type: string): string {
+  const t = (type || '').toLowerCase();
+  for (const e of FILE_ICONS) if (e.test.test(t)) return e.file;
+  return 'generic.svg';
+}
+
+// Official Azure icon for a resource type, as an inline <img>. `cls` controls size
+// ("rty-ico" default, or "rty-ico lg" for the detail dock). `tinted` is accepted for
+// backwards-compatibility but ignored — the official icons carry their own colours.
 export function typeIcon(type: string, opts: { tinted?: boolean; cls?: string } = {}): string {
-  const e = lookup(type);
-  const style = opts.tinted ? ` style="color:${e.color}"` : '';
-  return `<span class="rty-wrap"${style}>${wrap(e.svg, opts.cls || 'rty-ico')}</span>`;
+  const cls = opts.cls || 'rty-ico';
+  return `<span class="rty-wrap"><img class="${cls}" src="${ICON_BASE}${iconFile(type)}" alt="" loading="lazy" decoding="async" /></span>`;
 }
 
 export function typeColor(type: string): string {

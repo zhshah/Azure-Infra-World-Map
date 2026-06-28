@@ -527,7 +527,7 @@ button { font-family: inherit; }
 
 /* ---- Resource-type icons ---- */
 .rty-wrap { display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); flex: 0 0 auto; }
-.rty-ico { width: 15px; height: 15px; }
+.rty-ico { width: 15px; height: 15px; object-fit: contain; display: block; }
 .rty-ico.lg { width: 26px; height: 26px; }
 .tcell { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .tcell .rty-wrap { width: 16px; }
