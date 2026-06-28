@@ -189,7 +189,7 @@ function buildShell() {
       <div class="period-tabs" id="periodTabs">${['1d', '7d', '14d', '30d', '60d', '90d'].map((r) => `<button class="period-tab ${r === '30d' ? 'active' : ''}" data-range="${r}">${r.toUpperCase()}</button>`).join('')}</div>
     </div>
     <div class="header-right">
-      <span class="credit-banner" id="creditBanner" title="Solution Accelerator by Zahir Hussain Shah · Sr. Solution Engineer — click for About"><span class="credit-l1">Solution Accelerator by</span><span class="credit-l2"><b>Zahir Hussain Shah</b> · Sr. Solution Engineer</span></span>
+      <span class="credit-banner" id="creditBanner" title="Solution by: Zahir Hussain Shah — click for About"><span class="credit-l2">Solution by: <b>Zahir Hussain Shah</b></span></span>
       <button id="aboutBtn" class="hbtn">About</button>
       <button id="exportBtn" class="hbtn" title="Export report — Excel, PDF or CSV">⤓ Export</button>
       <span id="liveClock" class="hclock"></span>
@@ -234,7 +234,7 @@ function buildShell() {
     <div class="custom-view hidden" id="customView"></div>
   </main>
   <footer class="site-footer">
-    <span><span class="site-footer-name">AZURE INFRA WORLD MAP</span><span class="site-footer-sub">GLOBAL CLOUD INTELLIGENCE · Solution Accelerator by Zahir Hussain Shah</span></span>
+    <span><span class="site-footer-name">AZURE INFRA WORLD MAP</span><span class="site-footer-sub">GLOBAL CLOUD INTELLIGENCE · Solution by: Zahir Hussain Shah</span></span>
     <span class="site-footer-mid">Microsoft Confidential</span>
     <span class="site-footer-copy" id="footerCtx"></span>
   </footer>
