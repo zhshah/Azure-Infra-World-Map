@@ -1,0 +1,208 @@
+================================================================================
+AZURE INFRA WORLD MAP — HIGH-LEVEL ARCHITECTURE (DIAGRAM BRIEF)
+================================================================================
+Author: Zahir Hussain Shah  ·  www.zahir.cloud
+Use this file to generate a clean, illustrated, high-level architecture diagram
+with ANY AI tool (ChatGPT / DALL·E / Image generators, Mermaid AI, Eraser.io,
+Excalidraw AI, Napkin.ai, Whimsical AI, draw.io, etc.).
+
+HOW TO USE
+  • Want an illustrated picture?  → copy SECTION 1 into an AI image generator.
+  • Want an editable diagram?      → copy SECTION 3 (Mermaid) into mermaid.live
+                                     or any "text-to-diagram" AI.
+  • Sections 2/4/5 are the source-of-truth spec, an ASCII sketch, and a style
+    guide so the result looks professional.
+
+
+================================================================================
+1) AI IMAGE-GENERATION PROMPT  (paste this whole block into an image AI)
+================================================================================
+Create a clean, modern, professional high-level software architecture diagram
+titled "Azure Infra World Map". Flat vector style with a light background, soft
+shadows, rounded rectangles, clear arrows, and plenty of whitespace. Use a
+Microsoft Azure palette: primary blue #0078D4, dark slate #1B1A19 for headers,
+and subtle grey #E1DFDD borders. Lay the diagram out in FIVE labelled horizontal
+bands (swimlanes), top to bottom, with arrows flowing downward and back up:
+
+BAND 1 — "User": a single icon of an analyst / cloud architect at a laptop,
+labelled "Browser (Analyst)".
+
+BAND 2 — "Azure App Service (single Linux Web App)": one large container box that
+holds two stacked boxes — "Built SPA (static files)" and "Express API (Node.js)".
+On the left edge of this container show a shield/key icon labelled
+"Managed Identity (read-only)" and a lock icon labelled "Microsoft Entra ID –
+Easy Auth". Note under the container: "UI + API share ONE origin / one port".
+
+BAND 3 — "Frontend (TypeScript SPA)": a prominent 3D GLOBE icon in the centre
+labelled "deck.gl 3D globe / world map", surrounded by small cards: "Lenses &
+live panels", "Cost Explorer", "Forecast & anomalies", "Exports (Excel/PDF/CSV)".
+
+BAND 4 — "Backend (Express API)": boxes for "REST /api endpoints",
+"Cache: memory + disk (.cache)", and "DefaultAzureCredential". Show a small
+cylinder labelled "Optional: Azure SQL cost cache".
+
+BAND 5 — "Azure Data Plane (READ-ONLY)": a row of six Azure service tiles, each
+with an icon and label: "Cost Management", "Resource Graph", "Microsoft Defender
+for Cloud", "Azure Advisor", "Azure Monitor", "Service Health". Add a seventh
+small tile "ARM Subscriptions API".
+
+ARROWS / LABELS:
+  • Browser → App Service: "HTTPS (Entra sign-in)"
+  • SPA → Express API: "relative /api JSON (same origin)"
+  • Express → Entra ID: "get token (Managed Identity)"
+  • Express → Azure Data Plane: one bundled arrow labelled "read-only queries"
+  • Azure Data Plane → Express → SPA: dashed return arrow labelled "JSON results"
+Put a green "READ-ONLY · no writes · no stored secrets" badge near the data plane.
+Keep all text crisp and legible. Make it look like a polished slide for an
+executive architecture review. 16:9 landscape orientation.
+
+
+================================================================================
+2) COMPONENTS & DATA FLOW  (the source of truth)
+================================================================================
+
+LAYER A — USER
+  • Browser (Analyst/Architect) — opens the dashboard, explores the globe,
+    cost explorer, security posture, etc.
+
+LAYER B — HOSTING & IDENTITY  (Azure App Service – one Linux Web App)
+  • App Service serves BOTH the built SPA (static files) AND the Express API
+    from a single origin / single port.
+  • Managed Identity — the app's cloud identity used for read-only Azure calls.
+  • Microsoft Entra ID (Easy Auth) — gates who can open the app.
+  (Locally this same code runs under your `az login` session instead of an MI.)
+
+LAYER C — FRONTEND  (Vite + TypeScript SPA, no UI framework)
+  • deck.gl 3D globe / world map — Map, Heatmap, Arc and Path layers.
+  • Lenses + live panels — Overview, Cost, Trends, Waste, Posture, Ops, Risk, WAF.
+  • Cost Explorer — group-by, daily-stacked, accumulated, custom ranges, drill-down.
+  • Forecast, anomaly detection, Pareto/concentration, inventory, tag governance.
+  • Typed API client — calls the backend with relative `/api/...` URLs.
+  • Exports — Excel, PDF, CSV.
+
+LAYER D — BACKEND  (Node.js + Express, server/index.mjs)
+  • REST `/api/*` endpoints (context, summary, regions, inventory, cost,
+    optimize, posture, resource detail, service-health, …).
+  • Caching — in-memory TTL cache + disk cache (`.cache/`) to survive throttling;
+    OPTIONAL Azure SQL database for long, throttle-proof cost history.
+  • Auth — DefaultAzureCredential: Managed Identity in Azure, Azure CLI locally.
+  • Subscription discovery — Azure CLI locally; ARM Subscriptions API in the cloud.
+
+LAYER E — AZURE DATA PLANE  (all READ-ONLY)
+  • Cost Management ........ spend, trends, forecast inputs
+  • Resource Graph ......... inventory, regions, linkage/dependencies
+  • Defender for Cloud ..... security assessments / posture
+  • Azure Advisor .......... cost/reliability/security recommendations
+  • Azure Monitor .......... resource metrics
+  • Service Health ......... incidents & advisories
+  • ARM Subscriptions API .. subscription enumeration (cloud)
+
+DATA FLOW (numbered)
+  1. Analyst opens the app → HTTPS → App Service → Entra Easy Auth → SPA is served.
+  2. SPA makes relative `/api` calls → Express API (same origin, same port).
+  3. Express requests a token from Microsoft Entra ID via its Managed Identity
+     (DefaultAzureCredential).
+  4. Express runs READ-ONLY queries against the Azure data plane
+     (Cost Management, Resource Graph, Defender, Advisor, Monitor, Service Health).
+  5. Results are cached (memory + disk, optional Azure SQL) to avoid rate limits.
+  6. JSON flows back to the SPA, which renders the 3D globe and the live panels.
+
+KEY PROPERTIES
+  • Read-only — never creates, updates, or deletes Azure resources.
+  • No stored secrets — auth is delegated to Managed Identity / Azure CLI.
+  • Single origin — one Web App hosts UI + API (easy to deploy and secure).
+
+
+================================================================================
+3) MERMAID DIAGRAM  (paste into https://mermaid.live or a Mermaid-aware AI)
+================================================================================
+flowchart TB
+    User["👤 Browser (Analyst)"]
+
+    subgraph Host["Azure App Service — single Linux Web App"]
+        direction TB
+        Identity["🔐 Managed Identity (read-only)\n+ Microsoft Entra ID (Easy Auth)"]
+        subgraph SPA["Frontend — Vite + TypeScript SPA"]
+            Globe["🌍 deck.gl 3D globe / world map"]
+            Panels["Lenses · Live panels · Cost Explorer\nForecast · Anomalies · Exports"]
+            ApiClient["Typed API client (/api)"]
+        end
+        subgraph API["Backend — Node.js + Express"]
+            Routes["REST /api endpoints"]
+            Cache["Cache: memory + disk (.cache)\n(optional Azure SQL cost cache)"]
+            Cred["DefaultAzureCredential"]
+        end
+    end
+
+    subgraph Azure["Azure Data Plane — READ-ONLY"]
+        Cost["Cost Management"]
+        Graph["Resource Graph"]
+        Defender["Defender for Cloud"]
+        Advisor["Azure Advisor"]
+        Monitor["Azure Monitor"]
+        Health["Service Health"]
+    end
+
+    User -->|HTTPS + Entra sign-in| SPA
+    Globe --> ApiClient
+    Panels --> ApiClient
+    ApiClient -->|relative /api JSON| Routes
+    Routes --> Cache
+    Routes --> Cred
+    Cred -.->|token via Managed Identity| Identity
+    Routes -->|read-only queries| Cost
+    Routes -->|read-only queries| Graph
+    Routes -->|read-only queries| Defender
+    Routes -->|read-only queries| Advisor
+    Routes -->|read-only queries| Monitor
+    Routes -->|read-only queries| Health
+    Cost -.->|JSON| Routes
+    Graph -.->|JSON| Routes
+
+
+================================================================================
+4) ASCII QUICK SKETCH
+================================================================================
+        ┌──────────────────────────────┐
+        │      Browser (Analyst)        │
+        └───────────────┬──────────────┘
+                        │ HTTPS + Entra sign-in
+                        ▼
+ ┌──────────────────────────────────────────────────────────┐
+ │   AZURE APP SERVICE  (one Linux Web App, one origin)      │
+ │  [Managed Identity / Entra Easy Auth — read-only]         │
+ │                                                          │
+ │   ┌──────────────────────┐     ┌──────────────────────┐  │
+ │   │  FRONTEND  (SPA)      │     │  BACKEND (Express)   │  │
+ │   │  🌍 deck.gl globe     │ /api│  REST /api endpoints │  │
+ │   │  lenses · panels      │────▶│  cache (mem + disk)  │  │
+ │   │  cost explorer        │JSON │  DefaultAzureCred.   │  │
+ │   │  exports (xlsx/pdf)   │◀────│  (+opt. Azure SQL)   │  │
+ │   └──────────────────────┘     └──────────┬───────────┘  │
+ └─────────────────────────────────────────--│──────────────┘
+                                              │ read-only queries
+                                              ▼
+ ┌──────────────────────────────────────────────────────────┐
+ │           AZURE DATA PLANE   (READ-ONLY)                  │
+ │  Cost Mgmt · Resource Graph · Defender · Advisor ·        │
+ │  Azure Monitor · Service Health · ARM Subscriptions       │
+ └──────────────────────────────────────────────────────────┘
+
+
+================================================================================
+5) STYLE GUIDE  (so the AI produces a "good illustrated" diagram)
+================================================================================
+  • Palette: Azure blue #0078D4 (primary), #50E6FF (accent), dark #1B1A19
+    (headers), grey #E1DFDD (borders), green #107C10 (the read-only badge).
+  • Shapes: rounded rectangles for components; a globe icon for the frontend;
+    a shield/lock for identity; cylinders for caches/databases.
+  • Layout: 5 labelled bands top-to-bottom (User → App Service → Frontend →
+    Backend → Azure data). Downward solid arrows for requests, dashed upward
+    arrows for JSON responses.
+  • Group the SPA and API inside ONE "Azure App Service" container to show they
+    share a single origin.
+  • Label every arrow (HTTPS, /api JSON, Managed-Identity token, read-only query).
+  • Add a green "READ-ONLY · no writes · no stored secrets" badge near the data
+    plane.
+  • Keep it minimal, lots of whitespace, executive-review quality, 16:9 landscape.
+================================================================================
