@@ -209,7 +209,9 @@ export class WMMap {
   }
 
   setRegions(regions: RegionAgg[], currency: string) {
-    this.regions = regions.filter((r) => r.lat != null && r.lon != null);
+    // Exclude non-geographic buckets (e.g. "global") and Null Island (0,0),
+    // which otherwise render as a stray bubble in the ocean south of Africa.
+    this.regions = regions.filter((r) => r.lat != null && r.lon != null && !(r.lat === 0 && r.lon === 0));
     this.currency = currency;
     this.maxCost = Math.max(1, ...this.regions.map((r) => r.cost));
     this.totalCost = Math.max(1, this.regions.reduce((s, r) => s + r.cost, 0));

@@ -58,5 +58,5 @@
   "chilecentral": { "display": "Chile Central", "geo": "Santiago, CL", "lat": -33.4489, "lon": -70.6693 },
   "centraluseuap": { "display": "Central US EUAP", "geo": "Iowa, US", "lat": 41.5908, "lon": -93.6208 },
   "eastus2euap": { "display": "East US 2 EUAP", "geo": "Virginia, US", "lat": 36.6681, "lon": -78.3889 },
-  "global": { "display": "Global", "geo": "Non-regional", "lat": 0, "lon": 0 }
+  "global": { "display": "Global", "geo": "Non-regional", "lat": null, "lon": null }
 }
