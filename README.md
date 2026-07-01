@@ -360,6 +360,43 @@ az role assignment create --assignee $PRINCIPAL --role "Security Reader" \
 > To cover a whole management group, scope to
 > `/providers/Microsoft.Management/managementGroups/<mg-id>` instead.
 
+> **Deploying in your own tenant?** The app signs in as its **system-assigned managed
+> identity** and can only see subscriptions where that identity has a role assignment.
+> You **must** grant the read-only roles below on **every** subscription you want to
+> appear in the tool.
+
+**Permissions the managed identity requires** (read-only — grant per subscription, or per management group):
+
+| Role | Why it's needed |
+|---|---|
+| **Reader** | Resource inventory, regions, dependency / linkage mapping, resource health |
+| **Cost Management Reader** | Spend, trends, forecast, anomalies, budgets |
+| **Security Reader** *(recommended)* | Microsoft Defender for Cloud posture &amp; findings |
+
+The tool is **100% read-only** — none of these roles permit any write, create, or delete,
+and no secrets are stored (authentication is delegated to the managed identity).
+
+**Multiple subscriptions.** The subscription picker is populated **dynamically** from every
+subscription the identity can access (within its home tenant). To add more, grant the same
+roles on each subscription, then restart the app so it re-enumerates:
+
+```bash
+for SUB in <sub-id-1> <sub-id-2> <sub-id-3>; do
+  for ROLE in "Reader" "Cost Management Reader" "Security Reader"; do
+    az role assignment create --assignee $PRINCIPAL --role "$ROLE" \
+      --scope /subscriptions/$SUB
+  done
+done
+
+# The subscription list is cached in memory — restart so the app picks up the new grants:
+az webapp restart -g $RG -n $APP
+```
+
+> New role assignments can take a few minutes to propagate to the Azure Subscriptions API.
+> If a newly-granted subscription doesn't appear right away, wait ~2–3 minutes and restart
+> the app again. Only subscriptions in the managed identity's **home tenant** are listed —
+> a single managed identity cannot enumerate other tenants.
+
 **4. Configure build + app settings:**
 
 ```bash
