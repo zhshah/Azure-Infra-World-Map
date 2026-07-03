@@ -934,6 +934,13 @@ if (sqlCache.isEnabled()) {
   sqlCache.ensureSchema().then(() => console.log('[sql] cost cache schema ready')).catch((e) => console.warn('[sql] schema init failed:', e.message));
 }
 
+// Marketing deck: short link that forces a download with a friendly filename.
+// (The raw file is also served statically at /downloads/azure-infra-world-map-deck.pdf.)
+if (serveStatic) {
+  app.get('/deck', (_req, res) =>
+    res.download(join(distDir, 'downloads', 'azure-infra-world-map-deck.pdf'), 'Azure Infra World Map - Deck.pdf'));
+}
+
 // SPA fallback: when serving the built UI, return index.html for any non-API GET
 // so browser refreshes and deep links resolve to the app.
 if (serveStatic) {
